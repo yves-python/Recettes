@@ -15,6 +15,16 @@ class Categories {
   Categories({this.imagesCategori, this.nomCategorie});
 }
 
+class Meals {
+  String? imageMeals;
+  String? nomMeals;
+  String? idMeal;
+  String? time = "10";
+  String? lvl = "moyen";
+
+  Meals({this.idMeal, this.imageMeals, this.nomMeals, this.lvl, this.time});
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
@@ -25,35 +35,48 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int selectedIndex = 0;
   int currentIndex = 0;
-  List<Categories> categorieList = [
-    
-  ];
-  List dinnerList = [
-    {
-      "image": "assets/images/dinner1.png",
-      "name": "Dinner1",
-      "time": "10",
-      "lvl": "Simple",
-    },
-    {
-      "image": "assets/images/dinner2.png",
-      "name": "Dinner2",
-      "time": "25",
-      "lvl": "Fcl",
-    },
-    {
-      "image": "assets/images/dinner3.png",
-      "name": "Dinner3",
-      "time": "40",
-      "lvl": "Moyen",
-    },
-    {
-      "image": "assets/images/dinner4.png",
-      "name": "Dinner4",
-      "time": "80",
-      "lvl": "Dfcl",
-    },
-  ];
+  String currentCategories = "Beef";
+  List<Categories> categorieList = [];
+  List<Meals> dinnerList =[];
+  bool? chargement;
+
+  void recuperationMeal(String categorie) async {
+    try {
+      setState(() {
+        chargement = true;
+      });
+      var url = Uri.parse(
+          "https://www.themealdb.com/api/json/v1/1/filter.php?c=$categorie");
+      var lienApi = await https.get(url);
+
+      if (lienApi.statusCode == 200) {
+        var reponse = jsonDecode(lienApi.body);
+        print(reponse);
+
+        setState(() {
+          dinnerList = List.generate(
+            // remplissages  de la list de facon automatique de categories
+            reponse["meals"].length,
+            (index) {
+              return Meals(
+                  nomMeals: reponse["meals"][index]["strMeal"],
+                  imageMeals: reponse["meals"][index]["strMealThumb"].replaceAll(RegExp(r'\\'), ''),
+                  idMeal: reponse["meals"][index]["idMeal"], 
+                  time:"10", 
+                  lvl: "fcl"
+                    );
+            },
+          );
+          chargement = false;
+        });
+      } else {
+        print(lienApi.statusCode);
+      }
+    } catch (e) {
+      print(e.toString());
+    }
+  }
+
   void funct() async {
     try {
       var url = Uri.parse(
@@ -66,12 +89,14 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(
           () {
             categorieList = List.generate(
+              // remplissages  de la list de facon automatique de categories
               reponse["categories"].length,
               (index) {
                 return Categories(
-                  nomCategorie: reponse["categories"][index]["strCategory"],
-                  imagesCategori: reponse["categories"][index]["strCategoryThumb"].replaceAll(RegExp(r'\\'),'')
-                );
+                    nomCategorie: reponse["categories"][index]["strCategory"],
+                    imagesCategori: reponse["categories"][index]
+                            ["strCategoryThumb"]
+                        .replaceAll(RegExp(r'\\'), ''));
               },
             );
           },
@@ -90,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // TODO: implement initState
     super.initState();
     funct();
+    recuperationMeal(currentCategories);
   }
 
   @override
@@ -323,6 +349,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: GestureDetector(
                       onTap: () => setState(() {
                         currentIndex = index;
+                        currentCategories = categorieList[index].nomCategorie!;
+                        print(currentCategories);
+                        recuperationMeal(currentCategories);
                       }),
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 12.0),
@@ -351,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ? kAccentColor
                                       : kDarkgreyColor,
                                   borderRadius: BorderRadius.circular(8.0)),
-                              child: Image.network ( 
+                              child: Image.network(
                                 categorieList[index].imagesCategori!,
                                 height: 30,
                                 width: 30,
@@ -379,11 +408,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 )),
               ),
             ),
+
             //                             M           E        A          L
+
             Padding(
               padding:
                   const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
-              child: GridView.builder(
+              child: chargement!? Center(child: CircularProgressIndicator(color: kPrimaryColor,))
+                  : GridView.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   childAspectRatio: 1.0,
@@ -400,10 +432,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       MaterialPageRoute(
                         builder: (context) => DetailScreen(
                             index,
-                            dinnerList[index]['image'],
-                            dinnerList[index]['name'],
-                            dinnerList[index]["time"],
-                            dinnerList[index]["lvl"]),
+                            dinnerList[index].imageMeals!,
+                            dinnerList[index].nomMeals!,
+                            dinnerList[index].time!,
+                            dinnerList[index].lvl!
+                          ),
                       ),
                     ),
                     child: Stack(
@@ -421,7 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
-                                dinnerList[index]['name'],
+                                dinnerList[index].nomMeals!,
                                 style: TextStyle(
                                     fontSize: 14.0,
                                     fontWeight: FontWeight.w600,
@@ -448,7 +481,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     MainAxisAlignment.spaceEvenly,
                                 children: [
                                   Text(
-                                    "${dinnerList[index]["time"]}\nMin",
+                                    "${dinnerList[index].time}\nMin",
                                     style: TextStyle(
                                         fontSize: 12.0,
                                         fontWeight: FontWeight.w400,
@@ -471,7 +504,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ),
                                   Text(
-                                    "Niveau \n ${dinnerList[index]["lvl"]}",
+                                    "Niveau \n ${dinnerList[index].lvl}",
                                     style: TextStyle(
                                       fontSize: 12.0,
                                       fontWeight: FontWeight.w400,
@@ -491,8 +524,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           right: 10.0,
                           child: Hero(
                             tag: "tag$index",
-                            child: Image.asset(
-                              dinnerList[index]['image'],
+                            child: Image.network(
+                              dinnerList[index].imageMeals!,
                               height: 100,
                               width: 100,
                             ),

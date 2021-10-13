@@ -103,7 +103,7 @@ class _DetailScreenState extends State<DetailScreen> {
               children: [
                 Hero(
                   tag: "tag${widget.index}",
-                  child: Image.asset(
+                  child: Image.network( 
                     widget.image,
                     height: 180.0,
                     width: 180.0,
